@@ -5,7 +5,7 @@ export const productRepository = {
   async create(product: Product): Promise<Product> {
     const [result] = await pool.query(
       'INSERT INTO products (name, description, quantity, price, category_id) VALUES (?, ?, ?, ?, ?)',
-      [product.name, product.description, product.quantity, product.price, product.category_id]
+      [product.name, product.description, product.quantity, product.price, product.categoryId]
     );
     const insertId = (result as any).insertId;
     return { ...product, id: insertId };

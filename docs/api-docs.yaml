@@ -3,13 +3,31 @@ info:
   title: Inventory API Documentation
   version: "1.0.0"
   description: API REST para controle de estoque, construída com Node.js, TypeScript, Express e MySQL.
+
 servers:
   - url: http://localhost:3000/api
     description: Servidor de Desenvolvimento
+
+tags:
+  - name: Authentication
+    description: Rotas para autenticação e geração de tokens JWT.
+  - name: Products
+    description: Gerenciamento de produtos no estoque.
+  - name: Categories
+    description: Gerenciamento de categorias de produtos.
+  - name: Suppliers
+    description: Gerenciamento de fornecedores. **Apenas admins podem acessar.**
+  - name: Orders
+    description: Controle de pedidos de compra e venda.
+  - name: Stock Movements
+    description: Registro de movimentações de estoque.
+
 paths:
-  /products:
+  /auth/login:
     post:
-      summary: Cria um novo produto no estoque.
+      tags:
+        - Authentication
+      summary: Autentica um usuário e retorna um token JWT.
       requestBody:
         required: true
         content:
@@ -17,26 +35,52 @@ paths:
             schema:
               type: object
               required:
-                - name
-                - quantity
-                - price
+                - username
+                - password
               properties:
-                name:
+                username:
                   type: string
-                  example: "Produto Teste"
-                description:
+                  example: "admin"
+                password:
                   type: string
-                  example: "Descrição do produto teste"
-                quantity:
-                  type: integer
-                  example: 10
-                price:
-                  type: number
-                  format: float
-                  example: 99.99
-                categoryId:
-                  type: integer
-                  example: 1
+                  example: "admin123"
+      responses:
+        "200":
+          description: Token JWT gerado com sucesso.
+        "401":
+          description: Credenciais inválidas.
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Lista todos os produtos disponíveis. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de produtos cadastrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        "401":
+          description: Não autorizado. Token ausente ou inválido.
+
+    post:
+      tags:
+        - Products
+      summary: Cria um novo produto. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreation'
       responses:
         "201":
           description: Produto criado com sucesso.
@@ -44,57 +88,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
-    get:
-      summary: Lista todos os produtos do estoque.
+        "400":
+          description: Dados inválidos enviados.
+
+    put:
+      tags:
+        - Products
+      summary: Atualiza a quantidade de um produto no estoque. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do produto a ser atualizado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductStockUpdate'
       responses:
         "200":
-          description: Lista de produtos.
+          description: Estoque do produto atualizado com sucesso.
+        "400":
+          description: Dados inválidos enviados.
+        "404":
+          description: Produto não encontrado.
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Lista todas as categorias. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de categorias cadastradas.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Product'
-    put:
-      summary: Atualiza a quantidade em estoque de um produto.
-      parameters:
-        - in: query
-          name: id
-          required: true
-          schema:
-            type: integer
-          description: ID do produto
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                quantity:
-                  type: number
-                  example: 20
-      responses:
-        "200":
-          description: Quantidade atualizada com sucesso.
-  /categories:
+                  $ref: '#/components/schemas/Category'
+        "401":
+          description: Não autorizado. Token ausente ou inválido.
+
     post:
-      summary: Cria uma nova categoria.
+      tags:
+        - Categories
+      summary: Cria uma nova categoria. **Requer autenticação**.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                  example: "Eletrônicos"
-                description:
-                  type: string
-                  example: "Produtos eletrônicos e gadgets."
+              $ref: '#/components/schemas/CategoryCreation'
       responses:
         "201":
           description: Categoria criada com sucesso.
@@ -102,22 +156,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Category'
-    get:
-      summary: Lista todas as categorias.
-      responses:
-        "200":
-          description: Lista de categorias.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Category'
+        "400":
+          description: Dados inválidos enviados.
+
     put:
-      summary: Atualiza uma categoria existente.
+      tags:
+        - Categories
+      summary: Atualiza uma categoria existente. **Requer autenticação**.
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: integer
@@ -127,22 +177,24 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "Eletrônicos"
-                description:
-                  type: string
-                  example: "Produtos eletrônicos e gadgets."
+              $ref: '#/components/schemas/CategoryUpdate'
       responses:
         "200":
           description: Categoria atualizada com sucesso.
+        "400":
+          description: Dados inválidos enviados.
+        "404":
+          description: Categoria não encontrada.
+
     delete:
-      summary: Remove uma categoria.
+      tags:
+        - Categories
+      summary: Remove uma categoria. **Requer autenticação**.
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: integer
@@ -150,7 +202,179 @@ paths:
       responses:
         "200":
           description: Categoria removida com sucesso.
+        "404":
+          description: Categoria não encontrada.
+
+  /suppliers:
+    get:
+      tags:
+        - Suppliers
+      summary: Lista todos os fornecedores. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de fornecedores cadastrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Supplier'
+        "401":
+          description: Não autorizado. Token ausente ou inválido.
+
+    post:
+      tags:
+        - Suppliers
+      summary: Cria um novo fornecedor. **Somente admins podem acessar**.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierCreation'
+      responses:
+        "201":
+          description: Fornecedor criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        "403":
+          description: Acesso negado. Apenas administradores podem criar fornecedores.
+        "400":
+          description: Dados inválidos enviados.
+
+    delete:
+      tags:
+        - Suppliers
+      summary: Remove um fornecedor. **Somente admins podem acessar**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do fornecedor a ser removido.
+      responses:
+        "200":
+          description: Fornecedor removido com sucesso.
+        "403":
+          description: Acesso negado. Apenas administradores podem remover fornecedores.
+        "404":
+          description: Fornecedor não encontrado.
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Lista todos os pedidos. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de pedidos cadastrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+    post:
+      tags:
+        - Orders
+      summary: Cria um novo pedido de compra ou venda. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreation'
+      responses:
+        "201":
+          description: Pedido criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+    put:
+      tags:
+        - Orders
+      summary: Atualiza o status de um pedido. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do pedido a ser atualizado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdate'
+      responses:
+        "200":
+          description: Status do pedido atualizado com sucesso.
+        "404":
+          description: Pedido não encontrado.
+
+  /movements:
+    get:
+      tags:
+        - Stock Movements
+      summary: Lista todas as movimentações de estoque. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de movimentações registradas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockMovement'
+
+    post:
+      tags:
+        - Stock Movements
+      summary: Registra uma movimentação de estoque. **Requer autenticação**.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockMovementCreation'
+      responses:
+        "201":
+          description: Movimentação registrada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockMovement'
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     Product:
       type: object
@@ -171,9 +395,44 @@ components:
           type: number
           format: float
           example: 99.99
-        categoryId:
+        category_id:
           type: integer
           example: 1
+
+    ProductCreation:
+      type: object
+      required:
+        - name
+        - quantity
+        - price
+        - category_id
+      properties:
+        name:
+          type: string
+          example: "Produto Teste"
+        description:
+          type: string
+          example: "Descrição do produto teste"
+        quantity:
+          type: integer
+          example: 10
+        price:
+          type: number
+          format: float
+          example: 99.99
+        category_id:
+          type: integer
+          example: 1
+
+    ProductStockUpdate:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          example: 20
+
     Category:
       type: object
       properties:
@@ -186,3 +445,169 @@ components:
         description:
           type: string
           example: "Produtos eletrônicos e gadgets."
+
+    CategoryCreation:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Eletrônicos"
+        description:
+          type: string
+          example: "Produtos eletrônicos e gadgets."
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Eletrônicos"
+        description:
+          type: string
+          example: "Produtos eletrônicos e gadgets."
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Fornecedor XYZ"
+        contact:
+          type: string
+          example: "contato@fornecedorxyz.com"
+
+    SupplierCreation:
+      type: object
+      required:
+        - name
+        - contact
+      properties:
+        name:
+          type: string
+          example: "Fornecedor ABC"
+        contact:
+          type: string
+          example: "email@fornecedorabc.com"
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: ["purchase", "sale"]
+          example: "purchase"
+        supplierId:
+          type: integer
+          example: 1
+        customerId:
+          type: integer
+          example: 2
+        status:
+          type: string
+          enum: ["pending", "completed", "canceled"]
+          example: "pending"
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: integer
+                example: 1
+              quantity:
+                type: integer
+                example: 5
+
+    OrderCreation:
+      type: object
+      required:
+        - type
+        - items
+      properties:
+        type:
+          type: string
+          enum: ["purchase", "sale"]
+          example: "purchase"
+        supplierId:
+          type: integer
+          example: 1
+        customerId:
+          type: integer
+          example: 2
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - product_id
+              - quantity
+            properties:
+              product_id:
+                type: integer
+                example: 1
+              quantity:
+                type: integer
+                example: 5
+
+    OrderStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: ["pending", "completed", "canceled"]
+          example: "completed"
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        product_id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: ["addition", "removal", "transfer", "adjustment"]
+          example: "addition"
+        quantity:
+          type: integer
+          example: 10
+        reason:
+          type: string
+          example: "Correção de estoque"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-02-06T14:30:00Z"
+
+    StockMovementCreation:
+      type: object
+      required:
+        - product_id
+        - type
+        - quantity
+      properties:
+        product_id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: ["addition", "removal", "transfer", "adjustment"]
+          example: "addition"
+        quantity:
+          type: integer
+          example: 10
+        reason:
+          type: string
+          example: "Correção de estoque"

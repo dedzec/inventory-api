@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { inventoryService } from '../services/inventoryService';
+import { productService } from '../services/productService';
 
-export const inventoryController = {
+export const productController = {
   // Cria um novo produto
   async createProduct(req: Request, res: Response, next: NextFunction) {
     try {
-      const product = await inventoryService.createProduct(req.body);
+      const product = await productService.createProduct(req.body);
       res.status(201).json({ data: product });
     } catch (error) {
       next(error);
@@ -15,7 +15,7 @@ export const inventoryController = {
   // Lista todos os produtos
   async getProducts(req: Request, res: Response, next: NextFunction) {
     try {
-      const products = await inventoryService.getProducts();
+      const products = await productService.getProducts();
       res.status(200).json({ data: products });
     } catch (error) {
       next(error);
@@ -27,7 +27,7 @@ export const inventoryController = {
     try {
       const { id } = req.params;
       const { quantity } = req.body;
-      const updated = await inventoryService.updateProductStock(parseInt(id, 10), quantity);
+      const updated = await productService.updateProductStock(parseInt(id, 10), quantity);
       res.status(200).json({ data: updated });
     } catch (error) {
       next(error);
