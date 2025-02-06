@@ -1,8 +1,12 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import inventoryRoutes from './routes/inventoryRoutes';
+import productRoutes from './routes/productRoutes';
 import categoryRoutes from './routes/categoryRoutes';
+import supplierRoutes from './routes/supplierRoutes';
+import orderRoutes from './routes/orderRoutes';
+import movementRoutes from './routes/movementRoutes';
+import authRoutes from './routes/authRoutes';
 import { errorHandler } from './middlewares/errorHandler';
 import setupSwagger from './swagger';
 
@@ -15,11 +19,19 @@ app.use(cors());
 // Permite o parsing de JSON nas requisições
 app.use(express.json());
 
-// Registra as rotas da API
-app.use('/api/products', inventoryRoutes);
-app.use('/api/categories', categoryRoutes);
+// Rota de autenticação (login) - não exige autenticação
+app.use('/api/auth', authRoutes);
 
-// Configuração do Swagger para documentação
+// Rotas protegidas: exigem autenticação via JWT
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/movements', movementRoutes);
+
+// Rota de fornecedores: exige autenticação E nível de acesso 'admin'
+app.use('/api/suppliers', supplierRoutes);
+
+// Configuração do Swagger para documentação (acessível em /docs)
 setupSwagger(app);
 
 // Middleware de tratamento de erros

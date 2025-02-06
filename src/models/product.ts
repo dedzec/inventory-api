@@ -1,18 +1,20 @@
-export class Product {
+import { IProduct } from '../interfaces/product.interface';
+
+export class Product implements IProduct{
   id?: number;
   name: string;
   description?: string;
   quantity: number;
   price: number;
-  category_id?: number;
+  categoryId?: number;
 
-  constructor(name: string, quantity: number, price: number, description?: string, category_id?: number, id?: number) {
+  constructor(name: string, quantity: number, price: number, description?: string, categoryId?: number, id?: number) {
     this.name = name;
     this.quantity = quantity;
     this.price = price;
 
     this.description = description;
-    this.category_id = category_id;
+    this.categoryId = categoryId;
     this.id = id;
   }
 }

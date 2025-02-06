@@ -3,5 +3,5 @@ export interface CreateProductDTO {
   description?: string;
   quantity: number;
   price: number;
-  category_id?: number;
+  categoryId?: number;
 }

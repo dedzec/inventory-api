@@ -1,4 +1,6 @@
-export class Category {
+import { ICategory } from '../interfaces/category.interface';
+
+export class Category implements ICategory {
   id?: number;
   name: string;
   description?: string;

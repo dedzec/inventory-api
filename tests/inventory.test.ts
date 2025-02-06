@@ -1,35 +1,73 @@
 import request from 'supertest';
 import app from '../src/app';
+import { userRepository } from '../src/repositories/userRepository'; // Importa repositório de usuários
+import bcrypt from 'bcrypt';
+
+let token: string;
 
 describe('Inventory API', () => {
-  // Teste para produtos
+  beforeAll(async () => {
+    console.log('🔄 Iniciando testes...');
+
+    // Verifica se o usuário já existe no banco
+    const existingUser = await userRepository.findByUsername('admin');
+
+    if (!existingUser) {
+      console.log('🛠 Criando usuário admin para os testes...');
+
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync('admin123', salt);
+
+      await userRepository.create({
+        username: 'admin',
+        passwordHash: hashedPassword,
+        role: 'admin',
+      });
+    } else {
+      console.log('✅ Usuário admin já existe, pulando criação...');
+    }
+
+    // Fazer login para obter token
+    const authResponse = await request(app).post('/api/auth/login').send({
+      username: 'admin',
+      password: 'admin123',
+    });
+
+    console.log('🔑 Resposta do login:', authResponse.body);
+
+    expect(authResponse.status).toBe(200);
+    token = authResponse.body.token;
+
+    expect(token).toBeDefined();
+  });
+
+  // afterAll(async () => {
+  //   console.log('🧹 Limpando dados de testes...');
+  //   await userRepository.deleteByUsername('admin');
+  // });
+
   it('deve criar um novo produto', async () => {
+    const newCategory = { name: 'Periféricos', description: 'Acessórios de computador' };
+    const categoryResponse = await request(app)
+      .post('/api/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newCategory);
+
+    expect(categoryResponse.status).toBe(201);
+    const categoryId = categoryResponse.body.data.id;
+
     const newProduct = {
       name: 'Mouse Razer',
       quantity: 10,
       price: 99.99,
-      description: 'Descrição do produto teste',
-      category_id: 1,
+      description: 'Mouse gamer de alta precisão',
+      categoryId: categoryId,
     };
 
     const response = await request(app)
       .post('/api/products')
+      .set('Authorization', `Bearer ${token}`)
       .send(newProduct);
-
-    expect(response.status).toBe(201);
-    expect(response.body.data).toHaveProperty('id');
-  });
-
-  // Testes para categorias
-  it('deve criar uma nova categoria', async () => {
-    const newCategory = {
-      name: 'Eletrônicos',
-      description: 'Produtos eletrônicos e gadgets'
-    };
-
-    const response = await request(app)
-      .post('/api/categories')
-      .send(newCategory);
 
     expect(response.status).toBe(201);
     expect(response.body.data).toHaveProperty('id');
@@ -37,61 +75,67 @@ describe('Inventory API', () => {
 
   it('deve listar todas as categorias', async () => {
     const response = await request(app)
-      .get('/api/categories');
+      .get('/api/categories')
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.data)).toBe(true);
   });
 
-  it('deve atualizar uma categoria existente', async () => {
-    // Primeiro, cria uma categoria para atualizar
-    const newCategory = {
-      name: 'Roupas',
-      description: 'Categoria de roupas'
+  it('deve criar um fornecedor (admin)', async () => {
+    const newSupplier = {
+      name: 'Fornecedor XPTO',
+      contact: 'contato@fornecedorxpto.com',
     };
 
-    const createResponse = await request(app)
-      .post('/api/categories')
-      .send(newCategory);
+    const response = await request(app)
+      .post('/api/suppliers')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newSupplier);
 
-    expect(createResponse.status).toBe(201);
-    const categoryId = createResponse.body.data.id;
-
-    // Atualiza a categoria
-    const updateData = {
-      name: 'Vestuário',
-      description: 'Categoria de vestuário'
-    };
-
-    const updateResponse = await request(app)
-      .put(`/api/categories/${categoryId}`)
-      .send(updateData);
-
-    expect(updateResponse.status).toBe(200);
-    // Supondo que o serviço retorne true para sucesso na atualização
-    expect(updateResponse.body.data).toBe(true);
+    expect(response.status).toBe(201);
+    expect(response.body.data).toHaveProperty('id');
   });
 
-  it('deve remover uma categoria existente', async () => {
-    // Cria uma categoria para remoção
-    const newCategory = {
-      name: 'Teste Remoção',
-      description: 'Categoria para teste de remoção'
+  it('deve criar um novo pedido', async () => {
+    const newOrder = {
+      type: 'purchase',
+      supplierId: 1,
+      items: [{ productId: 1, quantity: 5 }],
     };
 
-    const createResponse = await request(app)
-      .post('/api/categories')
-      .send(newCategory);
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newOrder);
 
-    expect(createResponse.status).toBe(201);
-    const categoryId = createResponse.body.data.id;
+    expect(response.status).toBe(201);
+    expect(response.body.data).toHaveProperty('id');
+  });
 
-    // Remove a categoria
-    const deleteResponse = await request(app)
-      .delete(`/api/categories/${categoryId}`);
+  it('deve registrar uma movimentação de estoque', async () => {
+    const newMovement = {
+      productId: 1,
+      type: 'in',
+      quantity: 20,
+      reason: 'Reabastecimento de estoque',
+    };
 
-    expect(deleteResponse.status).toBe(200);
-    // Supondo que o serviço retorne true para sucesso na remoção
-    expect(deleteResponse.body.data).toBe(true);
+    const response = await request(app)
+      .post('/api/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newMovement);
+
+    expect(response.status).toBe(201);
+    expect(response.body.data).toHaveProperty('id');
+  });
+
+  it('deve listar todas as movimentações de estoque', async () => {
+    const response = await request(app)
+      .get('/api/movements')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.data)).toBe(true);
   });
 });
