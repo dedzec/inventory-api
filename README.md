@@ -11,44 +11,44 @@ API REST para controle de estoque utilizando Node.js, TypeScript, Express e MySQ
 
 1. Clone o repositório e instale as dependências:
 
-   \`\`\`bash
-   npm install
-   \`\`\`
+```sh
+npm install
+```
 
 2. Configure as variáveis de ambiente no arquivo **.env**.
 
 3. Execute as migrações para criar as tabelas no banco de dados:
 
-   \`\`\`bash
-   npm run migration
-   \`\`\`
+```sh
+npm run migration
+```
 
 ## Desenvolvimento
 
 Para rodar a aplicação em modo de desenvolvimento:
 
-\`\`\`bash
+```sh
 npm run dev
-\`\`\`
+```
 
 ## Testes
 
 Para executar os testes:
 
-\`\`\`bash
+```sh
 npm test
-\`\`\`
+```
 
 ## Lint e Formatação
 
 - Para verificar o código com ESLint:
 
-  \`\`\`bash
-  npm run lint
-  \`\`\`
+```sh
+npm run lint
+```
 
 - Para formatar o código com Prettier:
 
-  \`\`\`bash
-  npm run format
-  \`\`\`
+```sh
+npm run format
+```
